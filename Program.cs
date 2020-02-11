@@ -20,7 +20,7 @@ namespace CoinsETLConsole
             this.Row = row;
             this.Project = row[0];
             this.ProjectPhase = row[1];
-            this.Date = row[2];
+            this.Date = row[2].Cast<DateTime>();
             this.Worker = row[3];
             this.Task = row[4];
             this.Comment = row[5];
@@ -38,7 +38,7 @@ namespace CoinsETLConsole
         public string ProjectPhase { get; set; }
 
         [ExcelColumn("C")] // Date
-        public string Date { get; set; }
+        public DateTime Date { get; set; }
 
         [ExcelColumn("D")] // Worker
         public string Worker { get; set; }
@@ -79,14 +79,78 @@ namespace CoinsETLConsole
 
     internal class ReportingItem
     {
+        public static string ExtractShortProjectName(string longProjectName)
+        {
+            int indexStart = 0;
+            string endingPattern = "COINS CCCA - ";
+            int indexEnd = longProjectName.IndexOf(endingPattern);
+            
+            if (indexEnd == -1)
+            {
+                endingPattern = "COINS - ";
+                indexEnd = longProjectName.IndexOf(endingPattern);
+                if (indexEnd == -1)
+                {
+                    endingPattern = "COINS ";
+                    indexEnd = longProjectName.IndexOf(endingPattern);
+                }
+            }
+
+            string result = longProjectName.Substring(indexEnd + endingPattern.Length);
+
+            result = result.Replace(" project", "").Replace(" Project", "");
+
+            return result;
+        }
+
+
+        public static List<ReportingItem> ParseComment(string comment, ReportingItem current)
+        {
+            //Story 123: lorem ipsum
+            //Story - 123: lorem ipsum
+            //Task 123: lorem ipsum
+            //Task - 123: lorem ipsum
+            //Test Case 123: lorem ipsum
+            //Test Case-123: lorem ipsum
+            //Test Case 22234: lorem ipsum
+            //US 123: lorem ipsum
+            //US - 123: lorem ipsum
+            //User Story 22566: lorem ipsum
+            //Bug 22565: lorem ipsum
+            //Task 22777: lorem ipsum
+            //Defect 456: lorem ipsum
+            //Defect - 456: lorem ipsum
+            //Bug 456: lorem ipsum
+            //Bug - 456: lorem ipsum
+            comment = comment.TrimStart(' ').TrimEnd(' ');
+            int length = comment.Length;
+
+            List<ReportingItem> result = new List<ReportingItem>();
+            for (int i = 0; i < length; i++)
+            {
+
+            }
+
+        }
+
+        public ReportingItem(ReportingItem itemToCopy)
+        {
+            Project = itemToCopy.Project;
+            Date = itemToCopy.Date;
+            Reporter = itemToCopy.Reporter;
+            Category = itemToCopy.Category;
+        }
+
         public ReportingItem(InputExcelRow input)
         {
-            Project = input.Project;
+            Project = ExtractShortProjectName(input.Project);
 
-            long dateNum = long.Parse(input.Date);
-            Date = DateTime.FromOADate(dateNum);
+            //long dateNum = long.Parse(input.Date);
+            //Date = DateTime.FromOADate(dateNum);
 
-            Reporter = Regex.Replace(input.Worker, @"\(.*?\)", "");
+            Date = input.Date;
+
+            Reporter = Regex.Replace(input.Worker, @" \(.*?\)", "");
 
             Category = input.Task;
 
@@ -131,81 +195,68 @@ namespace CoinsETLConsole
         }
     }
 
-    internal class OutputExcelRow
-    {
-
-    }
-
     class Program
     {
-        public static void ExcelWrite(string filePath)
+        public static void ExcelWrite(string filePath, List<ReportingItem> itemsToWrite)
         {
-            var Articles = new[]
-            {
-                new {
-                    Id = "101", Name = "C++"
-                },
-                new {
-                    Id = "102", Name = "Python"
-                },
-                new {
-                    Id = "103", Name = "Java Script"
-                },
-                new {
-                    Id = "104", Name = "GO"
-                },
-                new {
-                    Id = "105", Name = "Java"
-                },
-                new {
-                    Id = "106", Name = "C#"
-                }
-            };
-
             // Creating an instance 
             // of ExcelPackage 
             ExcelPackage excel = new ExcelPackage();
 
-            // name of the sheet 
-            var workSheet = excel.Workbook.Worksheets.Add("Sheet1");
+            string[] projectNames = itemsToWrite.Select(x => x.Project).Distinct().ToArray();
 
-            // setting the properties 
-            // of the work sheet  
-            workSheet.TabColor = System.Drawing.Color.Black;
-            workSheet.DefaultRowHeight = 12;
-
-            // Setting the properties 
-            // of the first row 
-            workSheet.Row(1).Height = 20;
-            workSheet.Row(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            workSheet.Row(1).Style.Font.Bold = true;
-
-            // Header of the Excel sheet 
-            workSheet.Cells[1, 1].Value = "S.No";
-            workSheet.Cells[1, 2].Value = "Id";
-            workSheet.Cells[1, 3].Value = "Name";
-
-            // Inserting the article data into excel 
-            // sheet by using the for each loop 
-            // As we have values to the first row  
-            // we will start with second row 
-            int recordIndex = 2;
-
-            foreach (var article in Articles)
+            foreach (var projectName in projectNames)
             {
-                workSheet.Cells[recordIndex, 1].Value = (recordIndex - 1).ToString();
-                workSheet.Cells[recordIndex, 2].Value = article.Id;
-                workSheet.Cells[recordIndex, 3].Value = article.Name;
-                recordIndex++;
-            }
+                // name of the sheet 
+                var workSheet = excel.Workbook.Worksheets.Add(projectName);
 
-            // By default, the column width is not  
-            // set to auto fit for the content 
-            // of the range, so we are using 
-            // AutoFit() method here.  
-            workSheet.Column(1).AutoFit();
-            workSheet.Column(2).AutoFit();
-            workSheet.Column(3).AutoFit();
+                // setting the properties 
+                // of the work sheet  
+                workSheet.TabColor = System.Drawing.Color.Black;
+                workSheet.DefaultRowHeight = 12;
+
+                // Setting the properties 
+                // of the first row 
+                workSheet.Row(1).Height = 20;
+                workSheet.Row(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                workSheet.Row(1).Style.Font.Bold = true;
+
+                // Header of the Excel sheet 
+                workSheet.Cells[1, 1].Value = "Date";
+                workSheet.Cells[1, 2].Value = "Reporter";
+                workSheet.Cells[1, 3].Value = "Category";
+                workSheet.Cells[1, 4].Value = "Task";
+                workSheet.Cells[1, 5].Value = "Description";
+                workSheet.Cells[1, 6].Value = "Hours";
+
+                // Inserting the article data into excel 
+                // sheet by using the for each loop 
+                // As we have values to the first row  
+                // we will start with second row 
+                int recordIndex = 2;
+
+                foreach (var row in itemsToWrite)
+                {
+                    workSheet.Cells[recordIndex, 1].Value = row.Date.ToShortDateString();
+                    workSheet.Cells[recordIndex, 2].Value = row.Reporter;
+                    workSheet.Cells[recordIndex, 3].Value = row.Category;
+                    workSheet.Cells[recordIndex, 4].Value = row.Task;
+                    workSheet.Cells[recordIndex, 5].Value = row.Description;
+                    workSheet.Cells[recordIndex, 6].Value = row.Hours;
+                    recordIndex++;
+                }
+
+                // By default, the column width is not  
+                // set to auto fit for the content 
+                // of the range, so we are using 
+                // AutoFit() method here.  
+                workSheet.Column(1).AutoFit();
+                workSheet.Column(2).AutoFit();
+                workSheet.Column(3).AutoFit();
+                workSheet.Column(4).AutoFit();
+                workSheet.Column(5).AutoFit();
+                workSheet.Column(6).AutoFit();
+            }
 
             // file name with .xlsx extension  
 
@@ -223,8 +274,10 @@ namespace CoinsETLConsole
 
         static void Main(string[] args)
         {
-            const string inputPath = @"C:\Users\ssurnin\Downloads\OneDrive_1_2-7-2020\Example - input.xlsx";
-            const string outputPath = @"C:\Users\ssurnin\Downloads\OneDrive_1_2-7-2020\Output.xlsx";
+            //const string inputPath = @"C:\Users\ssurnin\Downloads\OneDrive_1_2-7-2020\Example - input.xlsx";
+            const string inputPath = @"D:\Sources\ETL_For_COINS\OneDrive_1_07.02.2020\Example - input.xlsx";
+            //const string outputPath = @"C:\Users\ssurnin\Downloads\OneDrive_1_2-7-2020\Output.xlsx";
+            const string outputPath = @"D:\Sources\ETL_For_COINS\OneDrive_1_07.02.2020\Output.xlsx";
 
             var excel = new ExcelQueryFactory(inputPath);
 
@@ -270,7 +323,7 @@ namespace CoinsETLConsole
                 Console.WriteLine();
             }
 
-            //ExcelWrite(outputPath);
+            ExcelWrite(outputPath, reportedItems);
 
             Console.WriteLine("Hello World!");
         }
