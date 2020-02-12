@@ -20,7 +20,7 @@ namespace CoinsETLConsole
             this.Row = row;
             this.Project = row[0];
             this.ProjectPhase = row[1];
-            this.Date = row[2].Cast<DateTime>();
+            this.Date = Program.GetDatetimeFromCell(row[2]); //row[2].Cast<DateTime>();
             this.Worker = row[3];
             this.Task = row[4];
             this.Comment = row[5];
@@ -81,7 +81,6 @@ namespace CoinsETLConsole
     {
         public static string ExtractShortProjectName(string longProjectName)
         {
-            int indexStart = 0;
             string endingPattern = "COINS CCCA - ";
             int indexEnd = longProjectName.IndexOf(endingPattern);
             
@@ -304,7 +303,14 @@ namespace CoinsETLConsole
 
     class Program
     {
-        public static void ExcelWrite(string filePath, List<ReportingItem> itemsToWrite)
+        public static DateTime GetDatetimeFromCell(Cell cell)
+        {
+            long dateNum = long.Parse(cell.Value.ToString());
+            var res = DateTime.FromOADate(dateNum);// Cast<DateTime>()
+            return res;
+        }
+
+        public static void ExcelWrite(string filePath, List<ReportingItem> itemsToWrite, DateTime startDate, DateTime endDate)
         {
             // Creating an instance 
             // of ExcelPackage 
@@ -327,20 +333,32 @@ namespace CoinsETLConsole
                 workSheet.Row(1).Height = 20;
                 workSheet.Row(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 workSheet.Row(1).Style.Font.Bold = true;
+                workSheet.Row(1).Style.Font.Color.SetColor(System.Drawing.Color.Black);
+
+                workSheet.Cells[1, 1].Value = "Period";
+                workSheet.Cells[1, 2].Value = $"{startDate.ToShortDateString()} - {endDate.ToShortDateString()} ";
+
+                workSheet.Row(2).Height = 20;
+                workSheet.Row(2).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                workSheet.Row(2).Style.Fill.PatternType = ExcelFillStyle.Solid;
+                workSheet.Row(2).Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Gray);
+                workSheet.Row(2).Style.Font.Color.SetColor(System.Drawing.Color.White);
+
+                //workSheet.Row(4).Style.Font.Bold = ;
 
                 // Header of the Excel sheet 
-                workSheet.Cells[1, 1].Value = "Date";
-                workSheet.Cells[1, 2].Value = "Reporter";
-                workSheet.Cells[1, 3].Value = "Category";
-                workSheet.Cells[1, 4].Value = "Task";
-                workSheet.Cells[1, 5].Value = "Description";
-                workSheet.Cells[1, 6].Value = "Hours";
+                workSheet.Cells[2, 1].Value = "Date";
+                workSheet.Cells[2, 2].Value = "Reporter";
+                workSheet.Cells[2, 3].Value = "Category";
+                workSheet.Cells[2, 4].Value = "Task";
+                workSheet.Cells[2, 5].Value = "Description";
+                workSheet.Cells[2, 6].Value = "Hours";
 
                 // Inserting the article data into excel 
                 // sheet by using the for each loop 
                 // As we have values to the first row  
                 // we will start with second row 
-                int recordIndex = 2;
+                int recordIndex = 3;
 
                 var itemsForCurrentProject = itemsToWrite.Where(x => x.Project == projectName).ToArray();
 
@@ -383,19 +401,22 @@ namespace CoinsETLConsole
 
         static void Main(string[] args)
         {
-            //const string inputPath = @"C:\Users\ssurnin\Downloads\OneDrive_1_2-7-2020\Example - input.xlsx";
-            const string inputPath = @"D:\Sources\ETL_For_COINS\OneDrive_1_07.02.2020\Example - input.xlsx";
-            //const string outputPath = @"C:\Users\ssurnin\Downloads\OneDrive_1_2-7-2020\Output.xlsx";
-            const string outputPath = @"D:\Sources\ETL_For_COINS\OneDrive_1_07.02.2020\Output.xlsx";
+            const string inputPath = @"C:\Users\ssurnin\Downloads\OneDrive_1_2-7-2020\Example - input.xlsx";
+            //const string inputPath = @"D:\Sources\ETL_For_COINS\OneDrive_1_07.02.2020\Example - input.xlsx";
+            const string outputPath = @"C:\Users\ssurnin\Downloads\OneDrive_1_2-7-2020\Output.xlsx";
+            //const string outputPath = @"D:\Sources\ETL_For_COINS\OneDrive_1_07.02.2020\Output.xlsx";
 
             var excel = new ExcelQueryFactory(inputPath);
 
             var worksheet = excel.WorksheetNoHeader("Sheet1");
 
+
             var rows = worksheet.ToArray();
 
             int rowsLength = rows.Count();
             int startIndex = -1;
+            DateTime startDate = Program.GetDatetimeFromCell(rows[3][1]); //rows[3][1].Cast<DateTime>();
+            DateTime endDate = Program.GetDatetimeFromCell(rows[4][1]); //rows[4][1].Cast<DateTime>();
 
             for (int i = 0; i < rowsLength; i++)
             {
@@ -433,11 +454,9 @@ namespace CoinsETLConsole
                 Console.WriteLine();
             }
 
-            ExcelWrite(outputPath, reportedItems);
+            ExcelWrite(outputPath, reportedItems, startDate, endDate);
 
             Console.WriteLine("Hello World!");
         }
-
-
     }
 }
