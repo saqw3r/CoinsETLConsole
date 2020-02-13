@@ -191,7 +191,7 @@ namespace CoinsETLConsole
 
             Category = input.Task;
 
-            input.ReportedHours = input.ReportedHours.TrimEnd('h', 'H');
+            input.ReportedHours = input.ReportedHours?.TrimEnd('h', 'H');
 
             double tmp;
             double.TryParse(input.ReportedHours, NumberStyles.Any, CultureInfo.InvariantCulture, out tmp);
