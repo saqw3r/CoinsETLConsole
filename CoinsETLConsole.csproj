@@ -16,4 +16,13 @@
     <PackageReference Include="System.Data.OleDb" Version="4.7.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Example - input.xlsx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Reported_Time_Details_January_2020.xlsx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

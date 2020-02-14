@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 
@@ -70,12 +72,12 @@ namespace CoinsETLConsole
 
                 foreach (var row in itemsForCurrentProject)
                 {
-                    workSheet.Cells[recordIndex, 1].Value = row.Date.ToShortDateString();
-                    workSheet.Cells[recordIndex, 2].Value = row.Reporter;
-                    workSheet.Cells[recordIndex, 3].Value = row.Category;
-                    workSheet.Cells[recordIndex, 4].Value = row.Task;
-                    workSheet.Cells[recordIndex, 5].Value = row.Description;
-                    workSheet.Cells[recordIndex, 6].Value = row.Hours;
+                    workSheet.Cells[recordIndex, 1].Value = row.DateToExcel;
+                    workSheet.Cells[recordIndex, 2].Value = row.ReporterToExcel;
+                    workSheet.Cells[recordIndex, 3].Value = row.CategoryToExcel;
+                    workSheet.Cells[recordIndex, 4].Value = row.TaskToExcel;
+                    workSheet.Cells[recordIndex, 5].Value = row.DescriptionToExcel;
+                    workSheet.Cells[recordIndex, 6].Value = row.HoursToExcel;
                     recordIndex++;
                 }
 
@@ -89,118 +91,124 @@ namespace CoinsETLConsole
                 workSheet.Column(4).AutoFit();
                 workSheet.Column(5).AutoFit();
                 workSheet.Column(6).AutoFit();
+
+                excel.Workbook.Worksheets.Add(projectName+" Summary");
             }
 
             // file name with .xlsx extension  
 
             if (File.Exists(filePath))
+            {
+                Console.WriteLine($"The file {filePath} is already exists");
                 File.Delete(filePath);
+            }
+                
 
             // Create excel file on physical disk  
-            FileStream objFileStrm = File.Create(filePath);
+            using FileStream objFileStrm = File.Create(filePath);
             objFileStrm.Close();
 
             // Write content to excel file  
             File.WriteAllBytes(filePath, excel.GetAsByteArray());
-            Console.ReadKey();
+            
         }
 
         static void Main(string[] args)
         {
-            const string inputPath = @"C:\Users\ssurnin\Downloads\OneDrive_1_2-7-2020\Example - input.xlsx";
+            Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
+
+            //const string inputPath = @"C:\Users\ssurnin\Downloads\OneDrive_1_2-7-2020\Example - input.xlsx";
             //const string inputPath = @"D:\Sources\ETL_For_COINS\OneDrive_1_07.02.2020\Example - input.xlsx";
-            const string outputPath = @"C:\Users\ssurnin\Downloads\OneDrive_1_2-7-2020\Output.xlsx";
+            string outputPathDirectory = Directory.GetCurrentDirectory();
+            string inputPathDirectory = Directory.GetCurrentDirectory();
             //const string outputPath = @"D:\Sources\ETL_For_COINS\OneDrive_1_07.02.2020\Output.xlsx";
 
-            string[] dirs = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.xlsx");
-            Console.WriteLine("The number of files starting with c is {0}.", dirs.Length);
-            foreach (string dir in dirs)
+            string[] files = Directory.GetFiles(inputPathDirectory, "Reported_Time_Details*.xlsx");
+            Console.WriteLine("The number of files with \"*.xlsx\" is {0}.", files.Length);
+            foreach (string file in files)
             {
-                Console.WriteLine(dir);
-            }
+                Console.WriteLine(file);
 
-            //read the Excel file as byte array
-            byte[] bin = File.ReadAllBytes(inputPath);
+                //read the Excel file as byte array
+                byte[] bin = File.ReadAllBytes(file);
 
-            //create a new Excel package in a memorystream
-            using (MemoryStream stream = new MemoryStream(bin))
-            using (ExcelPackage excelPackage = new ExcelPackage(stream))
-            {
-                //load worksheet
-                ExcelWorksheet worksheet = excelPackage.Workbook.Worksheets[0];
-
-                DateTime startDate = (DateTime)worksheet.Cells[4, 2].Value; //rows[3][1].Cast<DateTime>();
-                DateTime endDate = (DateTime)worksheet.Cells[5, 2].Value; //rows[4][1].Cast<DateTime>();
-                //DateTime startDate = Program.GetDatetimeFromCell(worksheet.Cells[4, 2].Value); //rows[3][1].Cast<DateTime>();
-                //DateTime endDate = Program.GetDatetimeFromCell(worksheet.Cells[5, 2].Value); //rows[4][1].Cast<DateTime>();
-
-                if (worksheet!=null)
+                //create a new Excel package in a memorystream
+                using (MemoryStream stream = new MemoryStream(bin))
+                using (ExcelPackage excelPackage = new ExcelPackage(stream))
                 {
-                    int rowsLength = worksheet.Dimension.End.Row - worksheet.Dimension.Start.Row; //rows.Count();
+                    //load worksheet
+                    ExcelWorksheet worksheet = excelPackage.Workbook.Worksheets[0];
 
-                    int startIndex = -1;
-                    //for (int i = 0; i < rowsLength; i++)
-                    //{
-                    //    RowNoHeader row = rows[i];
-                    //    if (row[0] == "Project")
-                    //    {
-                    //        startIndex = i + 1;
-                    //        break;
-                    //    }
-                    //}
+                    DateTime startDate = (DateTime)worksheet.Cells[4, 2].Value; //rows[3][1].Cast<DateTime>();
+                    DateTime endDate = (DateTime)worksheet.Cells[5, 2].Value; //rows[4][1].Cast<DateTime>();
+                                                                              //DateTime startDate = Program.GetDatetimeFromCell(worksheet.Cells[4, 2].Value); //rows[3][1].Cast<DateTime>();
+                                                                              //DateTime endDate = Program.GetDatetimeFromCell(worksheet.Cells[5, 2].Value); //rows[4][1].Cast<DateTime>();
 
-                    //loop all rows
-                    for (int i = worksheet.Dimension.Start.Row; i <= worksheet.Dimension.End.Row; i++)
+                    if (worksheet != null)
                     {
-                        if ((string)worksheet.Cells[i, 1].Value == "Project")
-                        {
-                            startIndex = i + 1;
-                            break;
-                        }
-                        
-                    }
+                        int startIndex = -1;
 
-                    List<InputExcelRow> readRows = new List<InputExcelRow>();
-                    List<ReportingItem> reportedItems = new List<ReportingItem>();
-
-                    for (int i = startIndex; i < rowsLength; i++)
-                    {
-                        string[] row = new string[9];
-                       
-                        //loop all columns in a row
-                        for (int j = worksheet.Dimension.Start.Column; j <= worksheet.Dimension.End.Column; j++)
+                        //loop all rows
+                        for (int i = worksheet.Dimension.Start.Row; i <= worksheet.Dimension.End.Row; i++)
                         {
-                            //add the cell data to the List
-                            if (worksheet.Cells[i, j].Value != null)
+                            if ((string)worksheet.Cells[i, 1].Value == "Project")
                             {
-                                row[j-1] = worksheet.Cells[i, j].Value.ToString();
+                                startIndex = i + 1;
+                                break;
                             }
                         }
-                        var input = new InputExcelRow(row);
 
-                        var reportingItem = new ReportingItem(input);
+                        List<InputExcelRow> readRows = new List<InputExcelRow>();
+                        List<ReportingItem> reportedItems = new List<ReportingItem>();
 
-                        var parsedTasks = ReportingItem.ParseComment(input.Comment, reportingItem);
+                        for (int i = startIndex; i <= worksheet.Dimension.End.Row; i++)
+                        {
+                            string[] row = new string[9];
 
-                        readRows.Add(input);
-                        reportedItems.AddRange(parsedTasks);
+                            //loop all columns in a row
+                            for (int j = worksheet.Dimension.Start.Column; j <= worksheet.Dimension.End.Column; j++)
+                            {
+                                //add the cell data to the List
+                                if (worksheet.Cells[i, j].Value != null)
+                                {
+                                    row[j - 1] = worksheet.Cells[i, j].Value.ToString();
+                                }
+                            }
+                            var input = new InputExcelRow(row);
+
+                            var reportingItem = new ReportingItem(input);
+
+                            List<ReportingItem> parsedTasks = new List<ReportingItem>() { reportingItem };
+                            if (input.Comment != null)
+                            {
+                                parsedTasks = ReportingItem.ParseComment(input.Comment, reportingItem);
+                            }
+
+                            readRows.Add(input);
+                            reportedItems.AddRange(parsedTasks);
+                        }
+
+                        //print rows here
+                        foreach (var item in reportedItems)
+                        {
+                            string itemToPrint = item.ToString();
+                            Console.WriteLine(itemToPrint);
+
+                            Console.WriteLine();
+                            Console.WriteLine();
+                        }
+
+                        string outputPath = outputPathDirectory + "\\" + $"COINS CCCA Teams Timesheets {startDate.ToString("MMM")}.{startDate.ToString("YY")}.xlsx";
+                        ExcelWrite(outputPath, reportedItems, startDate, endDate);
+
+                        Console.WriteLine($"The output file is '{outputPath}'");
                     }
-
-                    //print rows here
-                    foreach (var item in reportedItems)
-                    {
-                        string itemToPrint = item.ToString();
-                        Console.WriteLine(itemToPrint);
-
-                        Console.WriteLine();
-                        Console.WriteLine();
-                    }
-
-                    ExcelWrite(outputPath, reportedItems, startDate, endDate);
                 }
             }
 
             Console.WriteLine("Execution is finished");
+
+            Console.ReadKey();
         }
     }
 }

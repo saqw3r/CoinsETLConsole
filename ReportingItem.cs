@@ -58,7 +58,7 @@ namespace CoinsETLConsole
             List<ReportingItem> result = new List<ReportingItem>();
 
             char[] digits = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
-            string[] stringSeparators = new string[] { "h", "hour", "hours", "\n\r" };
+            string[] stringSeparators = new string[] { "\n\r", "\n" };
 
             int last_match_index = 0;
 
@@ -68,45 +68,44 @@ namespace CoinsETLConsole
             {
                 foreach (var separator in stringSeparators)
                 {
-                    if (separator == "hour" && (i + separator.Length + 1) < comment.Length 
-                        && comment[i + separator.Length + 1] == 's')
-                    {
-                        continue;
-                    }
-
-                    if (i + separator.Length <= length )
+                    string commentSubracted = "";
+                    if (i + separator.Length <= length)
                     {
                         string s = comment.Substring(i, separator.Length);
-                        string commentSubracted;
                         if (s.Equals(separator, StringComparison.InvariantCultureIgnoreCase))
                         {
-                            if (i - 1 > last_match_index && digits.Contains(comment[i-1]))
+                            commentSubracted = comment.Substring(last_match_index, i - last_match_index);
+                            commentSubracted = commentSubracted.Trim().TrimStart('\n', '\r');
+                            last_match_index = i + separator.Length;
+                            if (commentSubracted.Length > 0)
                             {
-                                commentSubracted = comment.Substring(last_match_index, i - last_match_index);
-                                commentSubracted = commentSubracted.Trim().TrimStart('\n', '\r');
                                 tasks.Add(commentSubracted);
-                                last_match_index = i + separator.Length;
                             }
-                            else if (i - 2 > last_match_index && digits.Contains(comment[i - 2]))
-                            {
-                                commentSubracted = comment.Substring(last_match_index, i - last_match_index - 1);
-                                commentSubracted = commentSubracted.Trim().TrimStart('\n', '\r');
-                                tasks.Add(commentSubracted);
-                                last_match_index = i + separator.Length;
-                            }
+                        }
+                    }
+                    else 
+                    {
+                        commentSubracted = comment.Substring(last_match_index);
+                        commentSubracted = commentSubracted.Trim().TrimStart('\n', '\r');
+                        if (commentSubracted.Length > 0)
+                        {
+                            tasks.Add(commentSubracted);
                         }
                     }
                 }
             }
-
+            
             if (!tasks.Any())
             {
                 var reportingItemToAdd = new ReportingItem(baseReportingItem);
-                reportingItemToAdd.Description = comment;
-                reportingItemToAdd.Hours = null;
-                if (reportingItemToAdd.Description != null)
+                if (comment != null)
                 {
-                    ExtractTaskOutOfDescription(reportingItemToAdd);
+                    ExtractActivitiesFromPartOfComment(comment, reportingItemToAdd);
+                    if (reportingItemToAdd.Description != null)
+                    {
+                        ExtractHoursAtTheEndingOfString(reportingItemToAdd.Description, reportingItemToAdd);
+                        ExtractTaskOutOfDescription(reportingItemToAdd);
+                    }
                     result.Add(reportingItemToAdd);
                 }
             }
@@ -115,11 +114,14 @@ namespace CoinsETLConsole
             {
                 var reportingItemToAdd = new ReportingItem(baseReportingItem);
                 reportingItemToAdd.Hours = null;
-                ExtractHoursAtTheEndingOfString(task, reportingItemToAdd);
-
-                if (reportingItemToAdd.Description != null)
+                if (task != null)
                 {
-                    ExtractTaskOutOfDescription(reportingItemToAdd);
+                    ExtractActivitiesFromPartOfComment(task, reportingItemToAdd);
+                    if (reportingItemToAdd.Description != null)
+                    {
+                        ExtractHoursAtTheEndingOfString(reportingItemToAdd.Description, reportingItemToAdd);
+                        ExtractTaskOutOfDescription(reportingItemToAdd);
+                    }
                     result.Add(reportingItemToAdd);
                 }
             }
@@ -127,21 +129,44 @@ namespace CoinsETLConsole
             return result;
         }
 
+        private static void ExtractActivitiesFromPartOfComment(string commentToParse, ReportingItem itemToUpdate)
+        {
+            string[] timeMarkers = new string[] { "h", "hour", "hours" };
+
+            commentToParse = commentToParse.TrimEnd(' ', '\r', '\n');
+
+            foreach (string timeMarker in timeMarkers)
+            {
+                if (commentToParse.EndsWith(timeMarker))
+                {
+                    commentToParse = commentToParse.Remove(commentToParse.Length - timeMarker.Length).TrimEnd();
+                    itemToUpdate.Description = commentToParse;
+                    return;
+                }
+            }
+
+            itemToUpdate.Description = commentToParse;
+            return;
+        }
+
         public static void ExtractTaskOutOfDescription(ReportingItem reportingItem)
         {
-            string[] taskIds = new string[] { "Story", "Task", "Test Case", "US", "User Story", "Bug", "Defect" };
-
-            string description = reportingItem.Description.Trim();
-
-            bool isTaskCouldBeDefined = taskIds.Any(s => description.StartsWith(s));
-
-            if (isTaskCouldBeDefined)
+            if (reportingItem.Description!=null)
             {
-                int index = description.IndexOf(':');
-                if (index > 0)
+                string[] taskIds = new string[] { "Story", "Task", "Test Case", "US", "User Story", "Bug", "Defect" };
+
+                string description = reportingItem.Description.Trim();
+
+                bool isTaskCouldBeDefined = taskIds.Any(s => description.StartsWith(s));
+
+                if (isTaskCouldBeDefined)
                 {
-                    reportingItem.Task = description.Substring(0, index).Trim();
-                    reportingItem.Description = description.Substring(index+1).Trim();
+                    int index = description.IndexOf(':');
+                    if (index > 0)
+                    {
+                        reportingItem.Task = description.Substring(0, index).Trim();
+                        reportingItem.Description = description.Substring(index + 1).Trim();
+                    }
                 }
             }
         }
@@ -151,23 +176,47 @@ namespace CoinsETLConsole
             int length = taskComment.Length;
             int index;
 
-            char[] allowedForDoubleValue = new char [] { '0', '1', '2', '3','4','5','6','7','8','9', '.', ','};
-            for (index = length-1; index > -1; index--)
-            {
-                if (!allowedForDoubleValue.Contains(taskComment[index]))
-                    break;
-            }
+            string timeToParse = "";
+            char[] digits = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
-            if (index < 0 || index + 1 >= length)
+            char[] allowedForDoubleValue = new char [] { '0', '1', '2', '3','4','5','6','7','8','9', '.', ','};
+            if (length > 0)
             {
-                toUpdateByParsing.Hours = null;
-                return;
+                for (index = length - 1; index > -1; index--)
+                {
+
+                    if (!allowedForDoubleValue.Contains(taskComment[index]))
+                        break;
+                    else
+                    {
+                        timeToParse = taskComment[index] + timeToParse;
+                    }
+                }
+
+                if (index < 0 || index + 1 >= length)
+                {
+                    toUpdateByParsing.Hours = null;
+                    return;
+                }
+
+                bool containsAnyDigit = timeToParse.IndexOfAny(digits) > -1;
+                if (containsAnyDigit)
+                {
+                    double parsedValue = double.Parse(timeToParse, CultureInfo.InvariantCulture);
+                    toUpdateByParsing.Hours = parsedValue;
+                    toUpdateByParsing.Description = taskComment.Substring(0, index).TrimEnd(':', '-').TrimEnd();
+                }
+                else
+                {
+                    toUpdateByParsing.Description = taskComment;
+                    toUpdateByParsing.Hours = null;
+                }
             }
-                
-            string tmpToParse = taskComment.Substring(index+1);
-            double parsedValue = double.Parse(tmpToParse, CultureInfo.InvariantCulture);
-            toUpdateByParsing.Hours = parsedValue;
-            toUpdateByParsing.Description = taskComment.Substring(0, index).TrimEnd(':', '-').TrimEnd();
+            else
+            {
+                toUpdateByParsing.Description = null;
+                toUpdateByParsing.Hours = null;
+            }
         }
 
         public ReportingItem(ReportingItem itemToCopy)
@@ -203,15 +252,80 @@ namespace CoinsETLConsole
 
         public DateTime Date { get; set; }
 
+        public string DateToExcel
+        {
+            get
+            {
+                if (Date == null)
+                    return "?";
+
+                return Date.ToShortDateString();
+            }
+        }
+
         public string Reporter { get; set; }
+
+        public string ReporterToExcel
+        {
+            get
+            {
+                if (Reporter == null)
+                    return "?";
+
+                return Reporter;
+            }
+        }
 
         public string Category { get; set; }
 
+        public string CategoryToExcel
+        {
+            get
+            {
+                if (Category == null)
+                    return "?";
+
+                return Category;
+            }
+        }
+
         public string Task { get; set; }
+
+        public string TaskToExcel 
+        {
+            get {
+                if (Task == null)
+                    return "n/a";
+
+                return Task;
+            }
+        }
 
         public string Description { get; set; }
 
+        public string DescriptionToExcel
+        {
+            get
+            {
+                if (Description == null)
+                    return "?";
+
+                return Description;
+            }
+        }
+
         public double? Hours { get; set; }
+
+        public string HoursToExcel
+        {
+            get
+            {
+                if (Hours == null)
+                    return "?";
+
+                return Hours.ToString();
+            }
+        }
 
         private PropertyInfo[] _PropertyInfos = null;
 
