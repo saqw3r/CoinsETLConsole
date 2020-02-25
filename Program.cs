@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using OfficeOpenXml;
+using OfficeOpenXml.FormulaParsing.Utilities;
 using OfficeOpenXml.Style;
 
 namespace CoinsETLConsole
@@ -52,7 +53,14 @@ namespace CoinsETLConsole
                 workSheet.Row(2).Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Gray);
                 workSheet.Row(2).Style.Font.Color.SetColor(System.Drawing.Color.White);
 
-                //workSheet.Row(4).Style.Font.Bold = ;
+                
+
+                if (DateTimeFormatInfo.CurrentInfo != null)
+                    workSheet.Column(1).Style.Numberformat.Format = DateTimeFormatInfo.CurrentInfo.ShortDatePattern;
+
+                workSheet.Column(5).Style.WrapText = true;
+                workSheet.Column(5).Width = 150; //px
+                workSheet.Column(6).Style.Numberformat.Format = "0.0";
 
                 // Header of the Excel sheet 
                 workSheet.Cells[2, 1].Value = "Date";
@@ -78,6 +86,7 @@ namespace CoinsETLConsole
                     workSheet.Cells[recordIndex, 4].Value = row.TaskToExcel;
                     workSheet.Cells[recordIndex, 5].Value = row.DescriptionToExcel;
                     workSheet.Cells[recordIndex, 6].Value = row.HoursToExcel;
+                    workSheet.Row(recordIndex).CustomHeight = false;
                     recordIndex++;
                 }
 
@@ -89,7 +98,7 @@ namespace CoinsETLConsole
                 workSheet.Column(2).AutoFit();
                 workSheet.Column(3).AutoFit();
                 workSheet.Column(4).AutoFit();
-                workSheet.Column(5).AutoFit();
+                //workSheet.Column(5).AutoFit();
                 workSheet.Column(6).AutoFit();
 
                 excel.Workbook.Worksheets.Add(projectName+" Summary");
@@ -198,7 +207,7 @@ namespace CoinsETLConsole
                             Console.WriteLine();
                         }
 
-                        string outputPath = outputPathDirectory + "\\" + $"COINS CCCA Teams Timesheets {startDate.ToString("MMM")}.{startDate.ToString("YY")}.xlsx";
+                        string outputPath = outputPathDirectory + "\\" + $"COINS CCCA Teams Timesheets {startDate.ToString("MMM")}'{startDate.ToString("yy")}.xlsx";
                         ExcelWrite(outputPath, reportedItems, startDate, endDate);
 
                         Console.WriteLine($"The output file is '{outputPath}'");

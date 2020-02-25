@@ -103,7 +103,6 @@ namespace CoinsETLConsole
                     ExtractActivitiesFromPartOfComment(comment, reportingItemToAdd);
                     if (reportingItemToAdd.Description != null)
                     {
-                        ExtractHoursAtTheEndingOfString(reportingItemToAdd.Description, reportingItemToAdd);
                         ExtractTaskOutOfDescription(reportingItemToAdd);
                     }
                     result.Add(reportingItemToAdd);
@@ -119,7 +118,6 @@ namespace CoinsETLConsole
                     ExtractActivitiesFromPartOfComment(task, reportingItemToAdd);
                     if (reportingItemToAdd.Description != null)
                     {
-                        ExtractHoursAtTheEndingOfString(reportingItemToAdd.Description, reportingItemToAdd);
                         ExtractTaskOutOfDescription(reportingItemToAdd);
                     }
                     result.Add(reportingItemToAdd);
@@ -141,6 +139,8 @@ namespace CoinsETLConsole
                 {
                     commentToParse = commentToParse.Remove(commentToParse.Length - timeMarker.Length).TrimEnd();
                     itemToUpdate.Description = commentToParse;
+
+                    ExtractHoursAtTheEndingOfString(itemToUpdate.Description, itemToUpdate);
                     return;
                 }
             }
@@ -153,21 +153,21 @@ namespace CoinsETLConsole
         {
             if (reportingItem.Description!=null)
             {
-                string[] taskIds = new string[] { "Story", "Task", "Test Case", "US", "User Story", "Bug", "Defect" };
+                //string[] taskIds = new string[] { "Story", "Task", "Test Case", "US", "User Story", "Bug", "Defect" };
 
                 string description = reportingItem.Description.Trim();
 
-                bool isTaskCouldBeDefined = taskIds.Any(s => description.StartsWith(s));
+                //bool isTaskCouldBeDefined = taskIds.Any(s => description.StartsWith(s));
 
-                if (isTaskCouldBeDefined)
-                {
+                //if (isTaskCouldBeDefined)
+                //{
                     int index = description.IndexOf(':');
                     if (index > 0)
                     {
                         reportingItem.Task = description.Substring(0, index).Trim();
                         reportingItem.Description = description.Substring(index + 1).Trim();
                     }
-                }
+                //}
             }
         }
 
