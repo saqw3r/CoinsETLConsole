@@ -10,6 +10,8 @@ namespace CoinsETLConsole
 {
     internal class ReportingItem
     {
+        static char[] digits = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+
         public static string ExtractShortProjectName(string longProjectName)
         {
             string endingPattern = "COINS CCCA - ";
@@ -57,8 +59,7 @@ namespace CoinsETLConsole
 
             List<ReportingItem> result = new List<ReportingItem>();
 
-            char[] digits = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
-            string[] stringSeparators = new string[] { "\n\r", "\n" };
+            string[] stringSeparators = { "\n\r", "\n" };
 
             int last_match_index = 0;
 
@@ -129,7 +130,7 @@ namespace CoinsETLConsole
 
         private static void ExtractActivitiesFromPartOfComment(string commentToParse, ReportingItem itemToUpdate)
         {
-            string[] timeMarkers = new string[] { "h", "hour", "hours" };
+            string[] timeMarkers = { "h", "hour", "hours" };
 
             commentToParse = commentToParse.TrimEnd(' ', '\r', '\n');
 
@@ -161,12 +162,18 @@ namespace CoinsETLConsole
 
                 //if (isTaskCouldBeDefined)
                 //{
-                    int index = description.IndexOf(':');
-                    if (index > 0)
+
+                char[] arrayOfSeparators = {' ', ':'};
+                int index = description.IndexOf(':');
+                if (index > 0)
+                {
+                    if (digits.Contains(description[index - 1]) ||
+                        arrayOfSeparators.Contains(description[index-1]) && index > 1 && digits.Contains(description[index - 2]))
                     {
                         reportingItem.Task = description.Substring(0, index).Trim();
                         reportingItem.Description = description.Substring(index + 1).Trim();
                     }
+                }
                 //}
             }
         }

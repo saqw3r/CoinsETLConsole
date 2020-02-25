@@ -58,8 +58,9 @@ namespace CoinsETLConsole
                 if (DateTimeFormatInfo.CurrentInfo != null)
                     workSheet.Column(1).Style.Numberformat.Format = DateTimeFormatInfo.CurrentInfo.ShortDatePattern;
 
+                workSheet.Column(4).Style.WrapText = true;
                 workSheet.Column(5).Style.WrapText = true;
-                workSheet.Column(5).Width = 150; //px
+                workSheet.Column(5).Width = 120; //px
                 workSheet.Column(6).Style.Numberformat.Format = "0.0";
 
                 // Header of the Excel sheet 
