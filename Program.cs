@@ -40,7 +40,7 @@ namespace CoinsETLConsole
                 // Setting the properties 
                 // of the first row 
                 workSheet.Row(1).Height = 20;
-                workSheet.Row(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                //workSheet.Row(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 workSheet.Row(1).Style.Font.Bold = true;
                 workSheet.Row(1).Style.Font.Color.SetColor(System.Drawing.Color.Black);
 
@@ -48,20 +48,32 @@ namespace CoinsETLConsole
                 workSheet.Cells[1, 2].Value = $"{startDate.ToShortDateString()} - {endDate.ToShortDateString()} ";
 
                 workSheet.Row(2).Height = 20;
-                workSheet.Row(2).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                //workSheet.Row(2).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 workSheet.Row(2).Style.Fill.PatternType = ExcelFillStyle.Solid;
                 workSheet.Row(2).Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Gray);
                 workSheet.Row(2).Style.Font.Color.SetColor(System.Drawing.Color.White);
-
-                
 
                 if (DateTimeFormatInfo.CurrentInfo != null)
                     workSheet.Column(1).Style.Numberformat.Format = DateTimeFormatInfo.CurrentInfo.ShortDatePattern;
 
                 workSheet.Column(4).Style.WrapText = true;
+                workSheet.Column(4).Width = 33; //symbols
                 workSheet.Column(5).Style.WrapText = true;
-                workSheet.Column(5).Width = 120; //px
+                workSheet.Column(5).Width = 65; //symbols
                 workSheet.Column(6).Style.Numberformat.Format = "0.0";
+
+                workSheet.Column(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                workSheet.Column(2).Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                workSheet.Column(3).Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                workSheet.Column(4).Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                workSheet.Column(5).Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                workSheet.Column(6).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                workSheet.Column(1).Style.VerticalAlignment = ExcelVerticalAlignment.Top;
+                workSheet.Column(2).Style.VerticalAlignment = ExcelVerticalAlignment.Top;
+                workSheet.Column(3).Style.VerticalAlignment = ExcelVerticalAlignment.Top;
+                workSheet.Column(4).Style.VerticalAlignment = ExcelVerticalAlignment.Top;
+                workSheet.Column(5).Style.VerticalAlignment = ExcelVerticalAlignment.Top;
+                workSheet.Column(6).Style.VerticalAlignment = ExcelVerticalAlignment.Top;
 
                 // Header of the Excel sheet 
                 workSheet.Cells[2, 1].Value = "Date";
@@ -87,6 +99,7 @@ namespace CoinsETLConsole
                     workSheet.Cells[recordIndex, 4].Value = row.TaskToExcel;
                     workSheet.Cells[recordIndex, 5].Value = row.DescriptionToExcel;
                     workSheet.Cells[recordIndex, 6].Value = row.HoursToExcel;
+
                     workSheet.Row(recordIndex).CustomHeight = false;
                     recordIndex++;
                 }
@@ -101,6 +114,8 @@ namespace CoinsETLConsole
                 workSheet.Column(4).AutoFit();
                 //workSheet.Column(5).AutoFit();
                 workSheet.Column(6).AutoFit();
+
+                workSheet.Row(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                 excel.Workbook.Worksheets.Add(projectName+" Summary");
             }
